@@ -1,0 +1,37 @@
+{
+  "force": {
+    "attraction_strength": 0.05,
+    "link_length": 100,
+    "repulsion_strength": 200
+  },
+  "filters": {
+    "files": "",
+    "folders": "",
+    "tags": ""
+  },
+  "groups": [],
+  "layout": {
+    "component_seed": 412,
+    "force": {
+      "attraction_strength": 0.05,
+      "link_length": 100,
+      "repulsion_strength": 200
+    },
+    "node_size": {
+      "centrality": {
+        "enabled": true,
+        "radius": 15
+      },
+      "min_radius": 5,
+      "tag_size": {
+        "enabled": false,
+        "multiplier": 1,
+        "radius": 5
+      }
+    }
+  },
+  "node_field": "title",
+  "preview": true,
+  "show_arrow": true,
+  "show_tags": true
+}

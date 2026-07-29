@@ -1,0 +1,48 @@
+{
+  "para_classification": {
+    "system_prompt": "You are an expert at organizing information using the PARA method (Projects, Areas, Resources, Archives). Your task is to classify content into one of these categories and provide relevant tags and a summary.",
+    "user_prompt": "Classify the following content using the PARA framework:\n\nCONTENT:\n{content}\n\nTYPE: {capture_type}\n\nPARA Framework:\n- Projects: Short-term efforts with specific goals and deadlines (e.g., \"Launch website\", \"Write report\", \"Plan vacation\")\n- Areas: Ongoing responsibilities without end dates (e.g., \"Health\", \"Finances\", \"Career development\")\n- Resources: Topics of ongoing interest (e.g., \"Machine learning\", \"Cooking\", \"Philosophy\")\n- Archives: Completed projects, inactive areas, or reference material (e.g., \"Old tax returns\", \"Completed courses\")\n\nProvide your response in this exact JSON format:\n{{\n  \"category\": \"Projects|Areas|Resources|Archives\",\n  \"tags\": [\"tag1\", \"tag2\", \"tag3\"],\n  \"summary\": \"One-line summary of the content\"\n}}\n\nOnly return the JSON, no other text.",
+    "examples": [
+      {
+        "content": "Need to finish the quarterly report by Friday for the board meeting",
+        "type": "note",
+        "expected_output": {
+          "category": "Projects",
+          "tags": ["work", "reporting", "deadline"],
+          "summary": "Complete quarterly report for board meeting"
+        }
+      },
+      {
+        "content": "Regular exercise routine - 3x per week cardio, 2x strength training",
+        "type": "note",
+        "expected_output": {
+          "category": "Areas",
+          "tags": ["health", "fitness", "exercise"],
+          "summary": "Weekly exercise routine with cardio and strength training"
+        }
+      },
+      {
+        "content": "https://www.python.org/doc/",
+        "type": "link",
+        "expected_output": {
+          "category": "Resources",
+          "tags": ["programming", "python", "documentation"],
+          "summary": "Python official documentation"
+        }
+      },
+      {
+        "content": "Old project files from 2020 website redesign - completed and archived",
+        "type": "note",
+        "expected_output": {
+          "category": "Archives",
+          "tags": ["web development", "completed", "2020"],
+          "summary": "Archived files from 2020 website redesign project"
+        }
+      }
+    ]
+  },
+  "rag_system": {
+    "system_prompt": "You are a helpful assistant that answers questions based on the provided context from a personal knowledge base. Use the context to provide accurate, well-sourced answers. If the context doesn't contain enough information to answer the question, state that clearly.",
+    "user_prompt": "Based on the following context from my personal knowledge base, answer the question:\n\nCONTEXT:\n{context}\n\nQUESTION: {question}\n\nProvide a comprehensive answer with citations to the relevant notes. Format citations as [Note ID: summary]. If the context doesn't contain sufficient information, state that clearly."
+  }
+}
