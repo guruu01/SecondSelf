@@ -485,7 +485,7 @@
       ],
       "summary": "Test note with no specific context or goal",
       "created_at": "2026-07-29T08:17:49.590206Z",
-      "link_count": 1
+      "link_count": 2
     },
     "60332835-fbae-4db0-984a-1867edf630d9": {
       "raw_id": "ad43a073-7233-416a-8d03-b0e13a51dcad",
@@ -938,7 +938,7 @@
       ],
       "summary": "Test note with no specific context or goal",
       "created_at": "2026-07-29T08:31:05.903597Z",
-      "link_count": 1
+      "link_count": 2
     },
     "6323d878-93ab-43e4-b5a1-95d066fc10dd": {
       "raw_id": "ad43a073-7233-416a-8d03-b0e13a51dcad",
@@ -1130,7 +1130,30 @@
       "summary": "Personal email address for reference",
       "created_at": "2026-07-29T18:47:48.895624Z",
       "link_count": 0
+    },
+    "5f88b0fc-ed22-4d2c-8565-381659dcb2b6": {
+      "raw_id": "4344cfc8-54a1-402b-b819-632338e4f46d",
+      "category": "Resources",
+      "tags": [
+        "programming",
+        "data types"
+      ],
+      "summary": "Note about the string data type",
+      "created_at": "2026-08-03T14:35:15.691513Z",
+      "link_count": 0
+    },
+    "b134742a-b306-4e98-bf69-f8f30136ca14": {
+      "raw_id": "2b5addb6-9c7e-4cf3-a705-1cb8e4dcc398",
+      "category": "Projects",
+      "tags": [
+        "API",
+        "testing",
+        "development"
+      ],
+      "summary": "Test note for API checking",
+      "created_at": "2026-08-03T14:36:35.108813Z",
+      "link_count": 2
     }
   },
-  "last_updated": "2026-07-29T18:47:48.902496Z"
+  "last_updated": "2026-08-03T14:36:35.152682Z"
 }
