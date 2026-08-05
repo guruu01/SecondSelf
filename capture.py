@@ -5,7 +5,11 @@ from pathlib import Path
 from typing import Optional
 from utils import generate_uuid, get_timestamp
 from models import RawCapture
+from db import get_db, RawCaptureDB, raw_capture_to_db, db_to_raw_capture, init_db, is_db_available
 
+
+# Initialize database on import (optional)
+init_db()
 
 # Constants
 RAW_DIR = Path("raw")
@@ -13,12 +17,12 @@ INDEX_FILE = RAW_DIR / "index.json"
 
 
 def _ensure_raw_dir():
-    """Ensure raw directory exists."""
+    """Ensure raw directory exists (for file backup)."""
     RAW_DIR.mkdir(exist_ok=True)
 
 
 def _load_index() -> dict:
-    """Load the master index from raw/index.json."""
+    """Load the master index from raw/index.json (legacy support)."""
     if not INDEX_FILE.exists():
         return {"captures": []}
     
@@ -27,13 +31,13 @@ def _load_index() -> dict:
 
 
 def _save_index(index: dict):
-    """Save the master index to raw/index.json."""
+    """Save the master index to raw/index.json (legacy support)."""
     with open(INDEX_FILE, 'w', encoding='utf-8') as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
 
 
 def _update_index(capture_id: str, capture_type: str, timestamp: str):
-    """Add a new capture to the master index."""
+    """Add a new capture to the master index (legacy support)."""
     index = _load_index()
     index["captures"].append({
         "id": capture_id,
@@ -76,7 +80,19 @@ def capture_note(content: str, source: Optional[str] = None) -> str:
         source=source
     )
     
-    # Save to file
+    # Save to database if available
+    if is_db_available():
+        try:
+            db = next(get_db())
+            db_capture = raw_capture_to_db(capture)
+            db.add(db_capture)
+            db.commit()
+            db.close()
+        except Exception as e:
+            print(f"Warning: Failed to save to database: {e}")
+
+    # Also save to file as backup
+    _ensure_raw_dir()
     capture_file = RAW_DIR / f"{capture_id}.json"
     with open(capture_file, 'w', encoding='utf-8') as f:
         f.write(capture.to_json())
@@ -127,12 +143,24 @@ def capture_link(url: str) -> str:
         metadata={"url": url}
     )
     
-    # Save to file
+    # Save to database if available
+    if is_db_available():
+        try:
+            db = next(get_db())
+            db_capture = raw_capture_to_db(capture)
+            db.add(db_capture)
+            db.commit()
+            db.close()
+        except Exception as e:
+            print(f"Warning: Failed to save to database: {e}")
+
+    # Also save to file as backup
+    _ensure_raw_dir()
     capture_file = RAW_DIR / f"{capture_id}.json"
     with open(capture_file, 'w', encoding='utf-8') as f:
         f.write(capture.to_json())
 
-        # Also save as a clickable .url shortcut file
+    # Also save as a clickable .url shortcut file
     url_file = RAW_DIR / f"{capture_id}.url"
     with open(url_file, 'w', encoding='utf-8') as f:
         f.write(f"[InternetShortcut]\nURL={url}\n")
@@ -206,6 +234,19 @@ def capture_file(file_path: str) -> str:
         }
     )
     
+    # Save to database if available
+    if is_db_available():
+        try:
+            db = next(get_db())
+            db_capture = raw_capture_to_db(capture)
+            db.add(db_capture)
+            db.commit()
+            db.close()
+        except Exception as e:
+            print(f"Warning: Failed to save to database: {e}")
+
+    # Also save to file as backup
+    _ensure_raw_dir()
     # Copy the original file into raw/ with its original extension
     original_copy_path = RAW_DIR / f"{capture_id}{file_ext}"
     shutil.copy2(file_path, original_copy_path)

@@ -8,6 +8,12 @@ import numpy as np
 from pathlib import Path
 from fastembed import TextEmbedding
 from typing import Optional
+import pickle
+from db import get_db, EmbeddingDB, init_db, is_db_available
+
+
+# Initialize database on import (optional)
+init_db()
 
 
 # Global model cache
@@ -68,32 +74,80 @@ def compute_embeddings_batch(texts: list, model_name: str = "BAAI/bge-small-en-v
     return np.array(embeddings)
 
 
-def save_embedding(embedding: np.ndarray, path: str) -> None:
+def save_embedding(embedding: np.ndarray, wiki_id: str, model_name: str = "BAAI/bge-small-en-v1.5") -> None:
     """
-    Save embedding to a .npy file.
+    Save embedding to database (with file fallback).
 
     Args:
         embedding: Embedding array to save.
-        path: Path to save the embedding.
+        wiki_id: UUID of the wiki note.
+        model_name: Name of the model used.
     """
-    path_obj = Path(path)
-    path_obj.parent.mkdir(parents=True, exist_ok=True)
-    np.save(path, embedding)
+    # Save to database if available
+    if is_db_available():
+        try:
+            db = next(get_db())
+            # Serialize embedding to bytes
+            embedding_bytes = pickle.dumps(embedding)
+            
+            # Check if embedding already exists
+            existing = db.query(EmbeddingDB).filter(EmbeddingDB.id == wiki_id).first()
+            
+            if existing:
+                # Update existing embedding
+                existing.embedding = embedding_bytes
+                existing.model_name = model_name
+                existing.dimension = len(embedding)
+            else:
+                # Create new embedding record
+                db_embedding = EmbeddingDB(
+                    id=wiki_id,
+                    embedding=embedding_bytes,
+                    model_name=model_name,
+                    dimension=len(embedding)
+                )
+                db.add(db_embedding)
+            
+            db.commit()
+            db.close()
+        except Exception as e:
+            print(f"Warning: Failed to save to database: {e}")
+    
+    # Also save to file as backup
+    embeddings_dir = Path("wiki/embeddings")
+    embeddings_dir.mkdir(parents=True, exist_ok=True)
+    npy_path = embeddings_dir / f"{wiki_id}.npy"
+    np.save(npy_path, embedding)
 
 
-def load_embedding(path: str) -> np.ndarray:
+def load_embedding(wiki_id: str) -> np.ndarray:
     """
-    Load embedding from a .npy file.
+    Load embedding from database (with file fallback).
 
     Args:
-        path: Path to the embedding file.
+        wiki_id: UUID of the wiki note.
 
     Returns:
         numpy array of embedding vectors.
     """
-    if not Path(path).exists():
-        raise FileNotFoundError(f"Embedding file not found: {path}")
-    return np.load(path)
+    # Try database first
+    if is_db_available():
+        try:
+            db = next(get_db())
+            db_embedding = db.query(EmbeddingDB).filter(EmbeddingDB.id == wiki_id).first()
+            if db_embedding:
+                return pickle.loads(db_embedding.embedding)
+        except Exception as e:
+            print(f"Warning: Database query failed: {e}")
+        finally:
+            db.close()
+    
+    # Fallback to file
+    embeddings_dir = Path("wiki/embeddings")
+    npy_path = embeddings_dir / f"{wiki_id}.npy"
+    if not npy_path.exists():
+        raise FileNotFoundError(f"Embedding not found for wiki_id: {wiki_id}")
+    return np.load(npy_path)
 
 
 def compute_similarity(embedding1: np.ndarray, embedding2: np.ndarray) -> float:

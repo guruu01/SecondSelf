@@ -9,6 +9,11 @@ from typing import List, Dict, Any, Optional
 from embeddings import compute_embedding, compute_similarity, load_embedding
 from llm_client import get_llm_client
 from wiki import load_wiki_note
+from db import get_db, WikiNoteDB, db_to_wiki_note, init_db, is_db_available
+
+
+# Initialize database on import (optional)
+init_db()
 
 
 def embed_question(question: str) -> np.ndarray:
@@ -46,16 +51,20 @@ def retrieve_relevant_notes(question: str, top_k: int = 5) -> List[Dict[str, Any
     Returns:
         List of dictionaries containing note data and similarity scores.
     """
-    # Load all wiki notes
-    wiki_dir = Path("wiki")
-    if not wiki_dir.exists():
-        return []
+    # Load all wiki notes from database
+    if is_db_available():
+        db = next(get_db())
+        try:
+            wiki_notes_db = db.query(WikiNoteDB).all()
+        except Exception as e:
+            print(f"Warning: Database query failed: {e}")
+            wiki_notes_db = []
+        finally:
+            db.close()
+    else:
+        wiki_notes_db = []
     
-    # Get all wiki note files (excluding index.json and embeddings directory)
-    wiki_files = [f for f in wiki_dir.glob("*.json") 
-                  if f.name != "index.json" and not f.parent.name == "embeddings"]
-    
-    if not wiki_files:
+    if not wiki_notes_db:
         return []
     
     # Embed the question
@@ -63,18 +72,16 @@ def retrieve_relevant_notes(question: str, top_k: int = 5) -> List[Dict[str, Any
     
     # Load all notes and compute similarities
     notes_with_scores = []
-    embeddings_dir = wiki_dir / "embeddings"
     
-    for wiki_file in wiki_files:
+    for db_note in wiki_notes_db:
         try:
-            # Load wiki note
-            note = load_wiki_note(wiki_file.stem)
+            # Convert to WikiNote model
+            note = db_to_wiki_note(db_note)
             
-            # Load or compute embedding
-            embedding_path = embeddings_dir / f"{note.id}.npy"
-            if embedding_path.exists():
-                note_embedding = load_embedding(str(embedding_path))
-            else:
+            # Load embedding from database
+            try:
+                note_embedding = load_embedding(note.id)
+            except FileNotFoundError:
                 # Fallback: compute embedding on the fly
                 note_embedding = compute_embedding(note.content)
             
@@ -91,7 +98,7 @@ def retrieve_relevant_notes(question: str, top_k: int = 5) -> List[Dict[str, Any
                 "tags": note.tags
             })
         except Exception as e:
-            print(f"Error processing note {wiki_file}: {e}")
+            print(f"Error processing note {db_note.id}: {e}")
             continue
     
     # Sort by similarity score (descending)

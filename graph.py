@@ -5,6 +5,11 @@ import json
 from pathlib import Path
 from typing import Dict, List, Any
 from models import WikiNote, GraphNode, GraphEdge, GraphData
+from db import get_db, WikiNoteDB, db_to_wiki_note, init_db, is_db_available
+
+
+# Initialize database on import (optional)
+init_db()
 
 
 # PARA category color scheme
@@ -18,11 +23,28 @@ CATEGORY_COLORS = {
 
 def load_wiki_notes() -> Dict[str, WikiNote]:
     """
-    Load all wiki notes from the wiki directory.
+    Load all wiki notes from the database (with file fallback).
     
     Returns:
         Dict mapping wiki note IDs to WikiNote objects.
     """
+    # Try database first
+    if is_db_available():
+        db = next(get_db())
+        try:
+            wiki_notes_db = db.query(WikiNoteDB).all()
+            if wiki_notes_db:
+                wiki_notes = {}
+                for db_note in wiki_notes_db:
+                    wiki_note = db_to_wiki_note(db_note)
+                    wiki_notes[wiki_note.id] = wiki_note
+                return wiki_notes
+        except Exception as e:
+            print(f"Warning: Database query failed: {e}")
+        finally:
+            db.close()
+    
+    # Fallback to file
     wiki_dir = Path("wiki")
     wiki_notes = {}
     
