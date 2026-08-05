@@ -19,7 +19,7 @@ app = FastAPI(title="SecondSelf API")
 # Replace "*" with your actual frontend domain once deployed.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://sesecond-self-frontend.vercel.app"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
