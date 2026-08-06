@@ -4,12 +4,14 @@ FastAPI layer exposing SecondSelf backend as a REST API for the frontend.
 Run with: uvicorn api:app --reload --port 8000
 """
 import os
-from fastapi import FastAPI, HTTPException, Header, Depends
+import tempfile
+from pathlib import Path
+from fastapi import FastAPI, HTTPException, Header, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 
-from capture import capture_note
+from capture import capture_note, capture_file
 from process import process_capture
 from graph import build_graph, export_graph, CATEGORY_COLORS
 from ask import ask as ask_question
@@ -65,6 +67,58 @@ def capture(req: CaptureRequest, api_key_verified: None = Depends(verify_api_key
         return {"raw_id": raw_id, "wiki_id": wiki_id, "status": "processed"}
     except Exception as e:
         raise HTTPException(500, str(e))
+
+
+ALLOWED_UPLOAD_EXTENSIONS = {
+    ".txt", ".md", ".py", ".js", ".html", ".css", ".json", ".csv",
+    ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp",
+}
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+@app.post("/api/capture-file")
+async def capture_file_endpoint(
+    file: UploadFile = File(...),
+    link_threshold: float = 0.75,
+    api_key_verified: None = Depends(verify_api_key),
+):
+    """Upload a file (PDF, text, or image), extract its content, and process it
+    through the same classify → wiki → link pipeline as a text capture."""
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            400,
+            f"Unsupported file type: {ext or 'unknown'}. "
+            f"Allowed: {', '.join(sorted(ALLOWED_UPLOAD_EXTENSIONS))}",
+        )
+
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(400, "File too large (max 10MB)")
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=ext, dir=tempfile.gettempdir()
+        ) as tmp:
+            tmp.write(contents)
+            tmp_path = tmp.name
+
+        renamed_path = Path(tmp_path).with_name(file.filename or Path(tmp_path).name)
+        os.replace(tmp_path, renamed_path)
+        tmp_path = str(renamed_path)
+
+        raw_id = capture_file(tmp_path)
+        wiki_id = process_capture(raw_id, link_threshold=link_threshold)
+        export_graph()
+        return {"raw_id": raw_id, "wiki_id": wiki_id, "status": "processed"}
+    except (FileNotFoundError, ValueError) as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 @app.get("/api/graph")
