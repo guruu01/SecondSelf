@@ -148,11 +148,15 @@ INSTRUCTIONS:
 1. Answer the question using ONLY the information from the context notes above.
 2. If the context doesn't contain enough information to answer the question, say so clearly.
 3. Cite the specific note numbers you used in your answer (e.g., [Note 1], [Note 2]).
-4. Be concise but thorough.
-5. If multiple notes provide different perspectives, synthesize them.
-6. Do not make up information that isn't in the context.
+4. Format your answer as a short list of concise bullet points (use "- " at the
+   start of each line). Avoid long paragraphs. Each bullet should cover one
+   distinct point.
+5. Be concise but thorough.
+6. If multiple notes provide different perspectives, synthesize them into
+   separate bullets.
+7. Do not make up information that isn't in the context.
 
-ANSWER:"""
+ANSWER (as bullet points):"""
     
     return prompt
 
