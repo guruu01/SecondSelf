@@ -3,7 +3,8 @@ FastAPI layer exposing SecondSelf backend as a REST API for the frontend.
 
 Run with: uvicorn api:app --reload --port 8000
 """
-from fastapi import FastAPI, HTTPException
+import os
+from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -12,6 +13,8 @@ from capture import capture_note
 from process import process_capture
 from graph import build_graph, export_graph, CATEGORY_COLORS
 from ask import ask as ask_question
+
+API_KEY = os.getenv("API_KEY")
 
 app = FastAPI(title="SecondSelf API")
 
@@ -23,6 +26,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def verify_api_key(x_api_key: Optional[str] = Header(None)):
+    """Verify that the request contains a valid API key."""
+    if not API_KEY:
+        # If no API key is configured, allow all requests (for local dev)
+        return
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
 
 
 class CaptureRequest(BaseModel):
@@ -41,7 +53,7 @@ def health():
 
 
 @app.post("/api/capture")
-def capture(req: CaptureRequest):
+def capture(req: CaptureRequest, api_key_verified: None = Depends(verify_api_key)):
     """Capture a note, process it (classify → wiki → link), and rebuild the graph."""
     if not req.content or not req.content.strip():
         raise HTTPException(400, "Content cannot be empty")
@@ -56,7 +68,7 @@ def capture(req: CaptureRequest):
 
 
 @app.get("/api/graph")
-def get_graph():
+def get_graph(api_key_verified: None = Depends(verify_api_key)):
     """Return the full knowledge graph as nodes + edges."""
     try:
         data = build_graph()
@@ -73,7 +85,7 @@ def get_graph():
 
 
 @app.post("/api/rebuild-graph")
-def rebuild_graph():
+def rebuild_graph(api_key_verified: None = Depends(verify_api_key)):
     try:
         export_graph()
         return {"status": "rebuilt"}
@@ -82,7 +94,7 @@ def rebuild_graph():
 
 
 @app.post("/api/ask")
-def ask_endpoint(req: AskRequest):
+def ask_endpoint(req: AskRequest, api_key_verified: None = Depends(verify_api_key)):
     if not req.question or not req.question.strip():
         raise HTTPException(400, "Question cannot be empty")
     try:
