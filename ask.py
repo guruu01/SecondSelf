@@ -3,6 +3,7 @@ RAG-based Q&A module for querying personal knowledge base.
 
 Implements retrieval-augmented generation to answer questions using wiki notes.
 """
+import re
 import numpy as np
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -161,6 +162,30 @@ ANSWER (as bullet points):"""
     return prompt
 
 
+def format_as_bullets(answer: str) -> str:
+    """
+    Ensure the answer is formatted as bullet points, regardless of whether
+    the LLM actually followed the formatting instruction.
+    """
+    lines = [line.strip() for line in answer.strip().split("\n") if line.strip()]
+
+    def is_bullet_line(line: str) -> bool:
+        return bool(re.match(r"^([-*•]|\d+[.)])\s+", line))
+
+    bullet_lines = [line for line in lines if is_bullet_line(line)]
+    if lines and len(bullet_lines) >= max(1, len(lines) - 2):
+        return answer.strip()
+
+    text = " ".join(lines)
+    sentences = re.split(r"(?<=[.!?])\s+(?=[A-Z\[])", text)
+    sentences = [s.strip() for s in sentences if s.strip()]
+
+    if len(sentences) <= 1:
+        return answer.strip()
+
+    return "\n".join(f"- {s}" for s in sentences)
+
+
 def synthesize_answer(prompt: str) -> str:
     """
     Generate answer using LLM with RAG prompt.
@@ -221,6 +246,7 @@ def ask(question: str, top_k: int = 5) -> Dict[str, Any]:
     # Synthesize answer
     try:
         answer = synthesize_answer(prompt)
+        answer = format_as_bullets(answer)
     except Exception as e:
         # Fallback: return retrieved notes without synthesis
         answer = f"I encountered an error generating an answer: {str(e)}\n\nHere are the most relevant notes I found:\n\n"
